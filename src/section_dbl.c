@@ -107,7 +107,7 @@ section_dbl_search_by_pos(int pos, struct section_dbl *lst)
     struct section_dbl_node *tmp;
     int cnt;
 
-    cnt = 0;
+    cnt = 1;
     for (tmp = lst->first; tmp; tmp = tmp->next) {
         if (cnt == pos)
             return tmp;

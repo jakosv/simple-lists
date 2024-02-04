@@ -2,18 +2,20 @@
 #include "section_dbl.h"
 #include "item_dbl.h"
 #include "file_data.h"
+#include "config.h"
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <string.h>
 #include <ctype.h>
 
 void add_item_cmd(const char *item_name, const char *section_name,
-                  const char *filename)
+                  const char *filename, struct config *cfg)
 {
     struct section_dbl *sections;
     struct section_dbl_node *section;
-    sections = load_sections(filename);
+    sections = load_sections(filename, cfg->default_section);
 
     if (isdigit(section_name[0])) {
         section = section_dbl_search_by_pos(atoi(section_name), sections);
@@ -31,18 +33,19 @@ void add_item_cmd(const char *item_name, const char *section_name,
         }
     }
     item_dbl_push_back(item_name, section->items);
-    put_sections(sections, filename);
+    put_sections(sections, cfg->default_section, filename);
 }
 
 void move_item_cmd(const char *item_name, const char *section_name,
-                   const char *target_section_name, const char *filename)
+                   const char *target_section_name, const char *filename,
+                   struct config *cfg)
 {
     struct section_dbl *sections;
     struct section_dbl_node *section;
     struct item_dbl_node *item;
     struct section_dbl_node *target_section;
 
-    sections = load_sections(filename);
+    sections = load_sections(filename, cfg->default_section);
 
     if (isdigit(section_name[0])) {
         section = section_dbl_search_by_pos(atoi(section_name), sections);
@@ -84,17 +87,17 @@ void move_item_cmd(const char *item_name, const char *section_name,
     item_dbl_push_back(item->item_name, target_section->items);
     item_dbl_remove(item, section->items);
     target_section = section_dbl_search(target_section_name, sections);
-    put_sections(sections, filename);
+    put_sections(sections, cfg->default_section, filename);
 }
 
 void delete_item_cmd(const char *item_name, const char *section_name, 
-                     const char *filename)
+                     const char *filename, struct config *cfg)
 {
     struct section_dbl *sections;
     struct section_dbl_node *section;
     struct item_dbl_node *item;
 
-    sections = load_sections(filename);
+    sections = load_sections(filename, cfg->default_section);
 
     if (isdigit(section_name[0])) {
         section = section_dbl_search_by_pos(atoi(section_name), sections);
@@ -115,17 +118,18 @@ void delete_item_cmd(const char *item_name, const char *section_name,
 
     item_dbl_remove(item, section->items);
 
-    put_sections(sections, filename);
+    put_sections(sections, cfg->default_section, filename);
 }
 
-void show_section_cmd(const char *section_name, const char *filename)
+void show_section_cmd(const char *section_name, const char *filename,
+                      struct config *cfg)
 {
     int pos;
     struct section_dbl *sections;
     struct section_dbl_node *section;
     struct item_dbl_node *item;
 
-    sections = load_sections(filename);
+    sections = load_sections(filename, cfg->default_section);
 
     if (isdigit(section_name[0]))
         section = section_dbl_search_by_pos(atoi(section_name), sections);
@@ -144,23 +148,18 @@ void show_section_cmd(const char *section_name, const char *filename)
     }
 }
 
-void show_all_sections_cmd(const char *filename)
+void show_all_sections_cmd(const char *filename, struct config *cfg)
 {
     struct section_dbl *sections;
     struct section_dbl_node *section;
     int pos;
 
-    pos = 0;
-    sections = load_sections(filename);
+    pos = 1;
+    sections = load_sections(filename, cfg->default_section);
     puts("==== Sections ====");
     for (section = sections->first; section; section = section->next) {
-        struct item_dbl_node *item;
         printf("[%d] %s\n", pos, section->section_name);
         pos += 1;
-        /*
-        for (item = section->items->first; item; item = item->next)
-            printf("- %s\n", item->item_name);
-        */
     }
 }
 
@@ -179,57 +178,51 @@ char *get_option_copy(const char *opt_str)
 
 int main(int argc, char **argv)
 {
-    int ch;
-    char *cmd = NULL;
+    int ch, save_argc;
     char *filename = NULL;
-    char *item = NULL;
-    char *section = NULL;
-    char *target_section = NULL;
+    char *cmd;
+    char **args;
+    struct config *cfg;
+
+    cfg = parse_config();
+
+    save_argc = argc;
+    args = argv;
+    
+    argv += (argc - 3);
+    argc = 3;
+    ch = getopt(argc, argv, "f:");
+    if (ch != -1) {
+        filename = get_option_copy(optarg);
+        puts(filename);
+        save_argc -= 2;
+    } else {
+        filename = cfg->data_location;
+    }
+    argc = save_argc;
+    argv = args;
 
     cmd = argv[1];
-    optind = 2;
-
-    while ((ch = getopt(argc, argv, "f:i:s:t:")) != -1)  {
-        switch (ch) {
-        case 'f':
-            filename = get_option_copy(optarg);
-            break;
-        case 'i':
-            item = get_option_copy(optarg);
-            break;
-        case 's':
-            section = get_option_copy(optarg);
-            break;
-        case 't':
-            target_section = get_option_copy(optarg);
-            break;
-        default:
-            break;
-        }
-    }
 
     if (strcmp(cmd, "add") == 0) {
-        if (section)
-            add_item_cmd(item, section, filename);
+        if (argc > 3)
+            add_item_cmd(argv[2], argv[3], filename, cfg);
         else
-            add_item_cmd(item, unnamed_section_name, filename);
+            add_item_cmd(argv[2], cfg->default_section, filename, cfg);
     } else
     if (strcmp(cmd, "show") == 0) {
-        if (section)
-            show_section_cmd(section, filename);
+        if (argc > 2)
+            show_section_cmd(argv[2], filename, cfg);
         else
-            show_all_sections_cmd(filename);
+            show_all_sections_cmd(filename, cfg);
     } else
     if (strcmp(cmd, "move") == 0) {
-        move_item_cmd(item, section, target_section, filename);
+        move_item_cmd(argv[2], argv[3], argv[4], filename, cfg);
     } else
     if (strcmp(cmd, "delete") == 0) {
-        delete_item_cmd(item, section, filename); 
+        delete_item_cmd(argv[2], argv[3], filename, cfg); 
     }
 
-    free(item);
-    free(section);
-    free(target_section);
     free(filename);
 
     return 0;

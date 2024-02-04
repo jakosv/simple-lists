@@ -1,4 +1,5 @@
 #include "file_parser.h"
+#include "util.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -70,28 +71,6 @@ static int parse_item(struct file_parser *parser)
 
     parser->parsed_value[value_len] = 0; 
     return pe_eof;
-}
-
-static void str_strip(char *str)
-{
-    char *s;
-    int i, len;
-
-    len = strlen(str);
-    s = str;
-    /* skip leading spaces */
-    for (; *s == ' '; s++)
-        len--;
-
-    /* skip trailing spaces */
-    for (i = len-1; i >= 0; i--)
-        if (s[i] != ' ')
-            break;
-    len = i + 1;
-
-    for (i = 0; i < len; i++)
-        str[i] = s[i];
-    str[len] = '\0';
 }
 
 int parse_param(struct file_parser *parser)
