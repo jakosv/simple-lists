@@ -5,44 +5,60 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CONFIG_FILENAME ".slistsrc"
+#define CONFIG_FILENAME "/.slistsrc"
 #define DATA_FILENAME "/.slists"
 
-#define DATA_LOCATION       "data_location"
-#define DEFAULT_SECTION     "default_section"
-#define SECTION_DECORATION  "section_decoration"
-#define ITEM_DECORATION     "item_decoration"
+#define DATA_LOCATION   "data_location"
+#define DEFAULT_SECTION "default_section"
+
+#define DEFAULT_SECTION_VALUE "unsorted"
 
 enum { key_value_delimiter = '=' };
 
 enum { max_key_len = 256 };
 
-static FILE *open_config_file()
+static struct config *create_default_config(const char *path)
 {
-    FILE *file;
+    int ch;
+    printf("Do you want to create config %s? (yes/no)", path);
+    ch = getchar();
+    if (ch == 'y') {
+        FILE *file;
+        struct config *cfg;
+        char *data_path, *dir;
+
+        dir = getenv("HOME");
+        if (!dir)
+            dir = getenv("PWD");
+        data_path = str_concat(dir, DATA_FILENAME); 
+        puts(data_path);
+
+        cfg = malloc(sizeof(*cfg));
+        file = fopen(path, "w");
+        fprintf(file, DATA_LOCATION" = %s\n", data_path);
+        fprintf(file, DEFAULT_SECTION" = "DEFAULT_SECTION_VALUE);
+        strncpy(cfg->data_location, data_path, max_value_len);
+        strncpy(cfg->default_section, DEFAULT_SECTION_VALUE, max_value_len);
+
+        free(data_path);
+        fclose(file);
+
+        return cfg;
+    }
+    return NULL;
+}
+
+static char *get_config_path()
+{
     const char *config_dir;
     char *config_path;
     
     config_dir = getenv("HOME");
     if (!config_dir)
         config_dir = getenv("PWD");
-    config_path = str_concat(config_dir, DATA_FILENAME); 
+    config_path = str_concat(config_dir, CONFIG_FILENAME); 
 
-    file = fopen(config_path, "r");
-    if (!file) {
-        int ch;
-        printf("Config file is not exist. Do you want to create %s?", 
-               config_path);
-        ch = getchar();
-        if (ch == 'y') {
-            file = fopen(config_path, "w");
-        } else {
-            return NULL;
-        }
-    }
-    free(config_path);
-
-    return file;
+    return config_path;
 }
 
 static int parse_quotes(char *str, int str_len, char quote_char, 
@@ -122,29 +138,22 @@ static int parse_value(char *value, FILE *file)
     return value_len;
 }
 
-/*
-int parse_config_param(char *key, char *value, FILE *file)
-{
-    int key_parsing_res, value_parsing_res;
-
-    key_parsing_res = parse_key(key, file);
-    if (key_parsing_res <= 0)
-        return key_parsing_res;
-
-    value_parsing_res = parse_value(value, file); 
-    return value_parsing_res;
-}
-*/
-
-
 struct config *parse_config()
 {
     FILE *file;
+    char *config_path;
     struct config *cfg;
     char key[max_key_len+1];
     int res;
     
-    file = open_config_file();
+    config_path = get_config_path();
+    puts(config_path);
+    file = fopen(config_path, "r");
+    if (!file) {
+        cfg = create_default_config(config_path);
+        goto quit;
+    }
+
     cfg = malloc(sizeof(struct config));
     while ((res = parse_key(key, file)) > 0) {
         str_strip(key);
@@ -155,20 +164,11 @@ struct config *parse_config()
         if (strcmp(key, DEFAULT_SECTION) == 0) {
             parse_value(cfg->default_section, file);
             str_strip(cfg->default_section);
-        } else 
-        if (strcmp(key, SECTION_DECORATION) == 0) {
-            parse_value(cfg->section_decoration, file);
-            str_strip(cfg->section_decoration);
-        } else
-        if (strcmp(key, ITEM_DECORATION) == 0) {
-            parse_value(cfg->item_decoration, file);
-            str_strip(cfg->item_decoration);
-        }
+        }    
     }
     fclose(file);
-    return cfg;
-}
 
-void create_default_config()
-{
+quit:
+    free(config_path);
+    return cfg;
 }

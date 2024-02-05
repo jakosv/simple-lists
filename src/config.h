@@ -11,6 +11,5 @@ struct config {
 };
 
 struct config *parse_config();
-void create_default_config();
 
 #endif
