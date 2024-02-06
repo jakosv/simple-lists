@@ -1,4 +1,4 @@
-PROG = slists
+PROG = slist
 CFLAGS = -Wall -g -ansi -pedantic
 OBJMODULES = file_data.o file_parser.o section_dbl.o item_dbl.o config.o\
 			 util.o command.o

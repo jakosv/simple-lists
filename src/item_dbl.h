@@ -19,6 +19,7 @@ void item_dbl_free(struct item_dbl *lst);
 void item_dbl_push_front(const char *item_name, struct item_dbl *lst);
 void item_dbl_push_back(const char *item_name, struct item_dbl *lst);
 void item_dbl_remove(struct item_dbl_node *node, struct item_dbl *lst);
+int item_dbl_is_empty(struct item_dbl *lst);
 struct item_dbl_node *item_dbl_search_by_pos(int pos, struct item_dbl *lst);
 
 #endif

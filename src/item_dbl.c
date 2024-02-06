@@ -86,6 +86,11 @@ void item_dbl_remove(struct item_dbl_node *node, struct item_dbl *lst)
     free_node(node);
 }
 
+int item_dbl_is_empty(struct item_dbl *lst)
+{
+    return lst->first == NULL;
+}
+
 struct item_dbl_node *item_dbl_search_by_pos(int pos, struct item_dbl *lst)
 {
     int cnt;

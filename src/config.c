@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CONFIG_FILENAME "/.slistsrc"
-#define DATA_FILENAME "/.slists"
+#define CONFIG_FILENAME "/.slistrc"
+#define DATA_FILENAME "/.slist"
 
 #define DATA_LOCATION   "data_location"
 #define DEFAULT_SECTION "default_section"
@@ -17,35 +17,36 @@ enum { key_value_delimiter = '=' };
 
 enum { max_key_len = 256 };
 
-static struct config *create_default_config(const char *path)
+static struct config *get_default_config()
 {
-    int ch;
-    printf("Do you want to create config %s? (yes/no)", path);
-    ch = getchar();
-    if (ch == 'y') {
-        FILE *file;
-        struct config *cfg;
-        char *data_path, *dir;
+    char *data_dir, *data_path;
+    struct config *cfg;
 
-        dir = getenv("HOME");
-        if (!dir)
-            dir = getenv("PWD");
-        data_path = str_concat(dir, DATA_FILENAME); 
-        puts(data_path);
+    data_dir = getenv("HOME");
+    if (!data_dir)
+        data_dir = getenv("PWD");
+    data_path = str_concat(data_dir, DATA_FILENAME); 
 
-        cfg = malloc(sizeof(*cfg));
-        file = fopen(path, "w");
-        fprintf(file, DATA_LOCATION" = %s\n", data_path);
-        fprintf(file, DEFAULT_SECTION" = "DEFAULT_SECTION_VALUE);
-        strncpy(cfg->data_location, data_path, max_value_len);
-        strncpy(cfg->default_section, DEFAULT_SECTION_VALUE, max_value_len);
+    cfg = malloc(sizeof(*cfg));
+    strncpy(cfg->data_location, data_path, max_value_len);
+    cfg->data_location[max_value_len] = '\0';
+    strncpy(cfg->default_section, DEFAULT_SECTION_VALUE, max_value_len);
+    cfg->default_section[max_value_len] = '\0';
 
-        free(data_path);
-        fclose(file);
+    free(data_path);
+    return cfg;
+}
 
-        return cfg;
-    }
-    return NULL;
+static void save_config(const char *path, const struct config *cfg)
+{
+    FILE *file;
+
+    file = fopen(path, "w");
+
+    fprintf(file, DATA_LOCATION" = %s\n", cfg->data_location);
+    fprintf(file, DEFAULT_SECTION" = %s\n", cfg->default_section);
+
+    fclose(file);
 }
 
 static char *get_config_path()
@@ -138,6 +139,28 @@ static int parse_value(char *value, FILE *file)
     return value_len;
 }
 
+static void save_default_config(const char *path, const struct config *cfg)
+{
+    int ch;
+    printf("Do you want to create default config %s? (yes/no): ", path);
+    ch = getchar();
+    if (ch == 'y')
+        save_config(path, cfg);
+}
+
+static void parse_config_value_by_key(const char *key, FILE *file, 
+                                      struct config *cfg)
+{
+    if (strcmp(key, DATA_LOCATION) == 0) {
+        parse_value(cfg->data_location, file);
+        str_strip(cfg->data_location);
+    } else 
+    if (strcmp(key, DEFAULT_SECTION) == 0) {
+        parse_value(cfg->default_section, file);
+        str_strip(cfg->default_section);
+    }    
+}
+
 struct config *parse_config()
 {
     FILE *file;
@@ -146,25 +169,18 @@ struct config *parse_config()
     char key[max_key_len+1];
     int res;
     
+    cfg = get_default_config();
     config_path = get_config_path();
-    puts(config_path);
+
     file = fopen(config_path, "r");
     if (!file) {
-        cfg = create_default_config(config_path);
+        save_default_config(config_path, cfg);
         goto quit;
     }
 
-    cfg = malloc(sizeof(struct config));
     while ((res = parse_key(key, file)) > 0) {
         str_strip(key);
-        if (strcmp(key, DATA_LOCATION) == 0) {
-            parse_value(cfg->data_location, file);
-            str_strip(cfg->data_location);
-        } else 
-        if (strcmp(key, DEFAULT_SECTION) == 0) {
-            parse_value(cfg->default_section, file);
-            str_strip(cfg->default_section);
-        }    
+        parse_config_value_by_key(key, file, cfg);
     }
     fclose(file);
 

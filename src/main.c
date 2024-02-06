@@ -30,6 +30,21 @@ int main(int argc, char **argv)
 
     cfg = parse_config();
 
+    printf("%d\n", argc);
+    if (argc <= 2) {
+        switch (argc) {
+        case 1:
+            show_all_sections_cmd(cfg);
+            free(cfg);
+            return 0;
+        case 2: 
+            show_section_cmd(argv[1], cfg);
+            return 0;
+        default:
+            return 0;
+        }
+    }
+
     save_argc = argc;
     args = argv;
     
@@ -47,6 +62,7 @@ int main(int argc, char **argv)
     argc = save_argc;
     argv = args;
 
+
     cmd = argv[1];
 
     if (strcmp(cmd, "add") == 0) {
@@ -55,19 +71,13 @@ int main(int argc, char **argv)
         else
             add_item_cmd(argv[2], cfg->default_section, cfg);
     } else
-    if (strcmp(cmd, "show") == 0) {
-        if (argc > 2)
-            show_section_cmd(argv[2], cfg);
-        else
-            show_all_sections_cmd(cfg);
-    } else
     if (strcmp(cmd, "move") == 0) {
         move_item_cmd(argv[2], argv[3], argv[4], cfg);
     } else
     if (strcmp(cmd, "delete") == 0) {
         delete_item_cmd(argv[2], argv[3], cfg); 
     }
-
+    free(cfg);
 
     return 0;
 }

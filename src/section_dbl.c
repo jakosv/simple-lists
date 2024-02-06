@@ -14,6 +14,7 @@ static void free_node(struct section_dbl_node *node)
 {
     free(node->section_name);
     item_dbl_free(node->items);
+    free(node->items);
     free(node);
 }
 

@@ -35,6 +35,8 @@ void add_item_cmd(const char *item_name, const char *section_name,
     }
     item_dbl_push_back(item_name, section->items);
     put_sections(sections, cfg->default_section, cfg->data_location);
+    section_dbl_free(sections);
+    free(sections);
 }
 
 void move_item_cmd(const char *item_name, const char *section_name,
@@ -86,8 +88,12 @@ void move_item_cmd(const char *item_name, const char *section_name,
 
     item_dbl_push_back(item->item_name, target_section->items);
     item_dbl_remove(item, section->items);
+    if (item_dbl_is_empty(section->items))
+        section_dbl_remove(section, sections);
     target_section = section_dbl_search(target_section_name, sections);
     put_sections(sections, cfg->default_section, cfg->data_location);
+    section_dbl_free(sections);
+    free(sections);
 }
 
 void delete_item_cmd(const char *item_name, const char *section_name, 
@@ -117,8 +123,12 @@ void delete_item_cmd(const char *item_name, const char *section_name,
     item = item_dbl_search_by_pos(atoi(item_name), section->items);
 
     item_dbl_remove(item, section->items);
+    if (item_dbl_is_empty(section->items))
+        section_dbl_remove(section, sections);
 
     put_sections(sections, cfg->default_section, cfg->data_location);
+    section_dbl_free(sections);
+    free(sections);
 }
 
 void show_section_cmd(const char *section_name, struct config *cfg)
@@ -145,6 +155,8 @@ void show_section_cmd(const char *section_name, struct config *cfg)
         printf("[%d] %s\n", pos, item->item_name);
         pos += 1;
     }
+    section_dbl_free(sections);
+    free(sections);
 }
 
 void show_all_sections_cmd(struct config *cfg)
@@ -160,5 +172,7 @@ void show_all_sections_cmd(struct config *cfg)
         printf("[%d] %s\n", pos, section->section_name);
         pos += 1;
     }
+    section_dbl_free(sections);
+    free(sections);
 }
 
