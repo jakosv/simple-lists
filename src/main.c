@@ -21,63 +21,30 @@ char *get_option_copy(const char *opt_str)
     return str;
 }
 
-int main(int argc, char **argv)
+int parse_filename_argument(int argc, char **argv, struct config *cfg)
 {
-    int ch, save_argc;
-    char *cmd;
-    char **args;
-    struct config *cfg;
-
-    cfg = parse_config();
-
-    printf("%d\n", argc);
-    if (argc <= 2) {
-        switch (argc) {
-        case 1:
-            show_all_sections_cmd(cfg);
-            free(cfg);
-            return 0;
-        case 2: 
-            show_section_cmd(argv[1], cfg);
-            return 0;
-        default:
-            return 0;
-        }
-    }
-
-    save_argc = argc;
-    args = argv;
-    
-    argv += (argc - 3);
-    argc = 3;
+    int ch;
     ch = getopt(argc, argv, "f:");
     if (ch != -1) {
         char *filename;
         filename = get_option_copy(optarg);
         strncpy(cfg->data_location, filename, max_value_len);
-        puts(filename);
         free(filename);
-        save_argc -= 2;
     }
-    argc = save_argc;
-    argv = args;
+    return optind;
+}
 
+int main(int argc, char **argv)
+{
+    int skip_argc;
+    struct config *cfg;
 
-    cmd = argv[1];
+    cfg = parse_config();
+    skip_argc = parse_filename_argument(argc, argv, cfg);
+    argc -= skip_argc;
+    argv += skip_argc;
 
-    if (strcmp(cmd, "add") == 0) {
-        if (argc > 3)
-            add_item_cmd(argv[2], argv[3], cfg);
-        else
-            add_item_cmd(argv[2], cfg->default_section, cfg);
-    } else
-    if (strcmp(cmd, "move") == 0) {
-        move_item_cmd(argv[2], argv[3], argv[4], cfg);
-    } else
-    if (strcmp(cmd, "delete") == 0) {
-        delete_item_cmd(argv[2], argv[3], cfg); 
-    }
-    free(cfg);
+    perform_command(argc, argv, cfg);
 
     return 0;
 }
