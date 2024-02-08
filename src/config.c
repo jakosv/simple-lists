@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CONFIG_FILENAME "/.slistrc"
-#define DATA_FILENAME "/.slist"
+#define CONFIG_FILENAME ".slistrc"
+#define DATA_FILENAME "slist_data"
 
 #define DATA_LOCATION   "data_location"
 #define DEFAULT_SECTION "default_section"
@@ -25,7 +25,7 @@ static struct config *get_default_config()
     data_dir = getenv("HOME");
     if (!data_dir)
         data_dir = getenv("PWD");
-    data_path = str_concat(data_dir, DATA_FILENAME); 
+    data_path = str_concat(data_dir, "/"DATA_FILENAME); 
 
     cfg = malloc(sizeof(*cfg));
     strncpy(cfg->data_location, data_path, max_value_len);
@@ -57,7 +57,7 @@ static char *get_config_path()
     config_dir = getenv("HOME");
     if (!config_dir)
         config_dir = getenv("PWD");
-    config_path = str_concat(config_dir, CONFIG_FILENAME); 
+    config_path = str_concat(config_dir, "/"CONFIG_FILENAME); 
 
     return config_path;
 }
