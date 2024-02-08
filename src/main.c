@@ -36,7 +36,7 @@ int parse_filename_argument(int argc, char **argv, struct config *cfg)
 
 int main(int argc, char **argv)
 {
-    int skip_argc;
+    int skip_argc, res;
     struct config *cfg;
 
     cfg = parse_config();
@@ -44,7 +44,7 @@ int main(int argc, char **argv)
     argc -= skip_argc;
     argv += skip_argc;
 
-    perform_command(argc, argv, cfg);
+    res = perform_command(argc, argv, cfg);
 
-    return 0;
+    return res;
 }

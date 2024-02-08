@@ -4,7 +4,9 @@
 #include <stdio.h>
 
 enum { max_parsed_value_len = 256 };
+
 enum param_type { pt_none, pt_section, pt_task };
+
 enum parser_error { 
     pe_too_long_section = 1, 
     pe_too_long_task, 

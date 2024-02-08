@@ -3,6 +3,6 @@
 
 #include "config.h"
 
-void perform_command(int argc, char **argv, struct config *cfg);
+int perform_command(int argc, char **argv, struct config *cfg);
 
 #endif
