@@ -13,3 +13,8 @@ $ make install
 ```console
 $ slist help
 ```
+
+## Configuration
+```console
+$ vim ~/.slistrc
+```
