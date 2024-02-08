@@ -236,20 +236,20 @@ void perform_command(int argc, char **argv, struct config *cfg)
         argv += 1;
 
         if (strcmp(cmd, ADD_CMD) == 0) {
-            if (argc > 1) {
+            if (argc >= 2) {
                 add_item_cmd(argv[0], argv[1], cfg);
             } else {
                 add_item_cmd(argv[0], cfg->default_section, cfg);
             }
         } else
         if (strcmp(cmd, MOVE_CMD) == 0) {
-            if (argc > 3)
+            if (argc >= 3)
                 move_item_cmd(argv[0], argv[1], argv[2], cfg);
             else
                 command_error("Too few arguments in command \"%s\"\n", cmd);
         } else
         if (strcmp(cmd, DELETE_CMD) == 0) {
-            if (argc > 2)
+            if (argc >= 2)
                 delete_item_cmd(argv[0], argv[1], cfg); 
             else
                 command_error("Too few arguments in command \"%s\"\n", cmd);
