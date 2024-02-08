@@ -236,7 +236,6 @@ void perform_command(int argc, char **argv, struct config *cfg)
         argv += 1;
 
         if (strcmp(cmd, ADD_CMD) == 0) {
-            puts(argv[0]);
             if (argc > 1) {
                 add_item_cmd(argv[0], argv[1], cfg);
             } else {
