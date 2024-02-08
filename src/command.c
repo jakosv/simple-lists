@@ -12,13 +12,13 @@
 #include <ctype.h>
 #include <stdarg.h>
 
-#define HELP "`slist [-f file] <command> <task> <section>`\n"\
+#define HELP "`slist [-f file] <command> <item> <section>`\n"\
     "`slist` show all sections\n"\
     "`slist [section_pos|section_name]` show section\n"\
-    "`slist add [task]` add task to default section\n"\
-    "`slist add [task] [section_pos|section_name]` add task to section\n"\
-    "`slist del [task_pos] [section_pos|section_name] delete task\n"\
-    "`slist mv [task_pos] [section_pos|section_name] [target_section]\n"
+    "`slist add [item]` add item to default section\n"\
+    "`slist add [item] [section_pos|section_name]` add item to section\n"\
+    "`slist del [item_pos] [section_pos|section_name] delete item\n"\
+    "`slist mv [item_pos] [section_pos|section_name] [target_section]\n"
     
 
 #define ADD_CMD "add"
@@ -243,10 +243,18 @@ void perform_command(int argc, char **argv, struct config *cfg)
             }
         } else
         if (strcmp(cmd, MOVE_CMD) == 0) {
-            move_item_cmd(argv[0], argv[1], argv[2], cfg);
+            if (argc > 3)
+                move_item_cmd(argv[0], argv[1], argv[2], cfg);
+            else
+                command_error("Too few arguments in command \"%s\"\n", cmd);
         } else
         if (strcmp(cmd, DELETE_CMD) == 0) {
-            delete_item_cmd(argv[0], argv[1], cfg); 
+            if (argc > 2)
+                delete_item_cmd(argv[0], argv[1], cfg); 
+            else
+                command_error("Too few arguments in command \"%s\"\n", cmd);
+        } else {
+            command_error("Incorrect command \"%s\"\n", cmd);
         }
     }
     free(cfg);
