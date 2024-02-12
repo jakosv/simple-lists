@@ -6,7 +6,7 @@
 #include <string.h>
 
 #define CONFIG_FILENAME ".slistrc"
-#define DATA_FILENAME "slist_data"
+#define DATA_FILENAME ".slist_data"
 
 #define DATA_LOCATION   "data_location"
 #define DEFAULT_SECTION "default_section"
