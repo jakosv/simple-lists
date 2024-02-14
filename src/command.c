@@ -130,8 +130,26 @@ static int add_item_cmd(const char *item_name, const char *section_name,
     return 0;
 }
 
+static void remove_section_item(struct item_dbl_node *item,
+                                struct section_dbl_node *section,
+                                struct section_dbl *sections,
+                                const struct config *cfg)
+{
+    item_dbl_remove(item, section->items);
+
+    if (item_dbl_is_empty(section->items) &&
+            strcmp(section->section_name, cfg->default_section) != 0) 
+    {
+        printf("Section \"%s\" has been removed\n", section->section_name);
+        section_dbl_remove(section, sections);
+        show_all_sections(sections);
+    } else {
+        show_section(section);
+    }
+}
+
 static int move_item_cmd(const char *item_name, const char *section_name,
-                          const char *target_section_name, struct config *cfg)
+                         const char *target_section_name, struct config *cfg)
 {
     struct section_dbl *sections;
     struct section_dbl_node *section;
@@ -154,12 +172,9 @@ static int move_item_cmd(const char *item_name, const char *section_name,
     }
 
     item_dbl_push_back(item->item_name, target_section->items);
-    item_dbl_remove(item, section->items);
 
-    if (item_dbl_is_empty(section->items))
-        section_dbl_remove(section, sections);
+    remove_section_item(item, section, sections, cfg);
 
-    show_section(section);
     show_section(target_section);
 
     put_sections(sections, cfg->default_section, cfg->data_location);
@@ -219,16 +234,7 @@ static int delete_item_cmd(const char *item_name, const char *section_name,
 
     item = get_item(item_name, section);
 
-    item_dbl_remove(item, section->items);
-    if (item_dbl_is_empty(section->items) &&
-            strcmp(section->section_name, cfg->default_section) != 0) 
-    {
-        printf("Section \"%s\" has been removed\n", section->section_name);
-        section_dbl_remove(section, sections);
-        show_all_sections(sections);;
-    } else {
-        show_section(section);
-    }
+    remove_section_item(item, section, sections, cfg);
 
     put_sections(sections, cfg->default_section, cfg->data_location);
     section_dbl_free(sections);
