@@ -1,5 +1,6 @@
 #include "file_parser.h"
 #include "util.h"
+#include "parsed_str.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -19,6 +20,7 @@ struct file_parser *parser_open(const char *filename)
     parser->file = fopen(filename, "r");
     if (!parser->file)
         parser->file = fopen(filename, "w");
+    parser->parsed_value = parsed_str_init();
     parser->parsed_type = pt_none; 
 
     return parser;
@@ -27,24 +29,18 @@ struct file_parser *parser_open(const char *filename)
 void parser_free(struct file_parser *parser)
 {
     fclose(parser->file);
+    parsed_str_free(parser->parsed_value);
+    parser->parsed_value = NULL;
     free(parser);
 }
 
 static int parse_section(struct file_parser *parser)
 {
-    int ch, value_len; 
-    value_len = 0;
+    int ch; 
     while ((ch = fgetc(parser->file)) != EOF) {
-        if (ch == close_section_char) {
-            parser->parsed_value[value_len] = 0; 
+        if (ch == close_section_char)
             return 0;
-        }
-        parser->parsed_value[value_len] = ch; 
-        value_len++;
-        if (value_len == max_parsed_value_len-1) {
-            parser->parsed_value[value_len] = 0; 
-            return pe_too_long_section;
-        }
+        parsed_str_add_char(ch, parser->parsed_value); 
     }
     
     return pe_eof;
@@ -52,42 +48,35 @@ static int parse_section(struct file_parser *parser)
 
 static int parse_item(struct file_parser *parser)
 {
-    int ch, value_len, was_backslash; 
+    int ch, was_backslash; 
     was_backslash = 0;
-    value_len = 0;
     while ((ch = fgetc(parser->file)) != EOF) {
-        if (ch == close_item_char && !was_backslash) {
-            parser->parsed_value[value_len] = 0; 
+        if (ch == close_item_char && !was_backslash)
             return 0;
-        }
         if (was_backslash)
             was_backslash = 0;
         if (ch == '\\') {
             was_backslash = 1;
             continue;
         }
-        parser->parsed_value[value_len] = ch; 
-        value_len++;
-        if (value_len == max_parsed_value_len-1) {
-            parser->parsed_value[value_len] = 0; 
-            return pe_too_long_task;
-        }
+        parsed_str_add_char(ch, parser->parsed_value); 
     }
 
-    parser->parsed_value[value_len] = 0; 
     return pe_eof;
 }
 
 int parse_param(struct file_parser *parser)
 {
     int ch;
+
+    parsed_str_clear(parser->parsed_value);
+
     while ((ch = fgetc(parser->file)) != EOF) {
         if (ch == open_section_char) {
             int res = parse_section(parser);
             if (res)
                 return res;
             parser->parsed_type = pt_section;
-            str_strip(parser->parsed_value);
             return 0;
         } else 
         if (ch == open_item_char) {
@@ -95,10 +84,19 @@ int parse_param(struct file_parser *parser)
             if (res)
                 return res;
             parser->parsed_type = pt_task;
-            str_strip(parser->parsed_value);
             return 0;
         }
     }
     return pe_eof;
+}
+
+const char *get_parsed_value(struct file_parser *parser)
+{
+    const char *parsed_value;
+
+    parsed_str_strip(parser->parsed_value);
+    parsed_value = get_parsed_str_as_c_string(parser->parsed_value);
+
+    return parsed_value;
 }
 

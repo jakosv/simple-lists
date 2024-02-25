@@ -34,18 +34,6 @@ void put_sections(struct section_dbl *sections, const char *default_section,
     fclose(file);
 }
 
-static void process_parse_error(int err)
-{
-    switch (err) {
-    case pe_too_long_section:
-        fprintf(stderr, "Parse error: too long section\n");
-        break;
-    case pe_too_long_task:
-        fprintf(stderr, "Parse error: too long task\n");
-        break;
-    }
-}
-
 struct section_dbl *load_sections(const char *filename, 
                                   const char *default_section)
 {
@@ -65,17 +53,17 @@ struct section_dbl *load_sections(const char *filename,
     section_node = sections->last;
 
     while ((res = parse_param(parser)) != pe_eof) {
-        if (res > 0) {
-            process_parse_error(res);
-            return NULL;
-        }
+        const char *parsed_value;
+
+        parsed_value = get_parsed_value(parser);
         if (parser->parsed_type == pt_section) {
-            section_dbl_push_back(parser->parsed_value, sections);
+            section_dbl_push_back(parsed_value, sections);
             section_node = sections->last;
         } else {
-            item_dbl_push_back(parser->parsed_value, section_node->items);
+            item_dbl_push_back(parsed_value, section_node->items);
         }
     }
+
     parser_free(parser);
     return sections;
 }
