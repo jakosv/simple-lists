@@ -15,15 +15,15 @@
 #define HELP "`slist [-f file] <command> <item> <section>`\n"\
     "`slist` show all sections\n"\
     "`slist [section_pos|section_name]` show section\n"\
-    "`slist add [item]` add item to default section\n"\
-    "`slist add [item] [section_pos|section_name]` add item to section\n"\
-    "`slist del [item_pos] [section_pos|section_name]` delete item\n"\
-    "`slist mv [item_pos] [section_pos|section_name] [target_section]` "\
+    "`slist s [item]` save item to default section\n"\
+    "`slist add [section_pos|section_name] [item]` add item to section\n"\
+    "`slist del [section_pos|section_name] [item_pos]` delete item\n"\
+    "`slist mv [section_pos|section_name] [target_section] [item_pos]` "\
     "move item to another section\n"\
-    "`slist cp [item_pos] [section_pos|section_name] [target_section]` "\
+    "`slist cp [section_pos|section_name] [target_section] [item_pos]` "\
     "copy item\n"
-    
 
+#define SAVE_CMD "sv"
 #define ADD_CMD "add"
 #define MOVE_CMD "mv"
 #define COPY_CMD "cp"
@@ -104,7 +104,7 @@ get_section(const char *section_name, struct section_dbl *sections)
     return section;
 }
 
-static int add_item_cmd(const char *item_name, const char *section_name,
+static int add_item(const char *item_name, const char *section_name,
                          struct config *cfg)
 {
     struct section_dbl *sections;
@@ -148,7 +148,7 @@ static void remove_section_item(struct item_dbl_node *item,
     }
 }
 
-static int move_item_cmd(const char *item_name, const char *section_name,
+static int move_item(const char *item_name, const char *section_name,
                          const char *target_section_name, struct config *cfg)
 {
     struct section_dbl *sections;
@@ -183,7 +183,7 @@ static int move_item_cmd(const char *item_name, const char *section_name,
     return 0;
 }
 
-static int copy_item_cmd(const char *item_name, const char *section_name,
+static int copy_item(const char *item_name, const char *section_name,
                          const char *target_section_name, struct config *cfg)
 {
     struct section_dbl *sections;
@@ -217,7 +217,7 @@ static int copy_item_cmd(const char *item_name, const char *section_name,
     return 0;
 }
 
-static int delete_item_cmd(const char *item_name, const char *section_name, 
+static int delete_item(const char *item_name, const char *section_name, 
                            struct config *cfg)
 {
     struct section_dbl *sections;
@@ -275,6 +275,101 @@ static int show_all_sections_cmd(struct config *cfg)
     return 0;
 }
 
+static char *concat_arguments(int start, int end, int argc, char **argv)
+{
+    char *res;
+    int i, res_len;
+    
+    if (end >= argc)
+        end = argc-1;
+
+    res_len = 0;
+    res = NULL;
+    for (i = start; i <= end; i++) {
+        int arg_len, new_len;
+
+        arg_len = strlen(argv[i]);
+        new_len = res_len + arg_len;
+
+        res = realloc(res, new_len + 1);
+
+        strncpy(res + res_len, argv[i], arg_len);
+        if (i != end) {
+            res[new_len] = ' ';
+            new_len += 1;
+        }
+        res_len = new_len;
+    }
+
+    res[res_len] = '\0';
+
+    return res;
+}
+
+static int save_item_cmd(int argc, char **argv, struct config *cfg)
+{
+    int res;
+    char *item_name;
+
+    item_name = concat_arguments(0, argc-1, argc, argv);
+    res = add_item(item_name, cfg->default_section, cfg);
+    free(item_name);
+
+    return res;
+}
+
+static int add_item_cmd(int argc, char **argv, struct config *cfg,
+                         const char *cmd_name)
+{
+    int res = 1;
+
+    if (argc > 1) {
+        char *item_name;
+        char *section_name;
+        item_name = concat_arguments(1, argc-1, argc, argv);
+        section_name = argv[0];
+        res = add_item(item_name, section_name, cfg);
+        free(item_name);
+    } else {
+        command_error("Too few arguments in command \"%s\"\n", cmd_name);
+    }
+
+    return res;
+}
+
+static int move_item_cmd(int argc, char **argv, struct config *cfg,
+                         const char *cmd_name)
+{
+    int res = 1;
+    if (argc >= 3)
+        res = move_item(argv[2], argv[0], argv[1], cfg);
+    else
+        command_error("Too few arguments in command \"%s\"\n", cmd_name);
+    return res;
+}
+
+static int copy_item_cmd(int argc, char **argv, struct config *cfg,
+                         const char *cmd_name)
+{
+    int res = 1;
+    if (argc >= 3)
+        res = copy_item(argv[2], argv[0], argv[1], cfg);
+    else
+        command_error("Too few arguments in command \"%s\"\n", cmd_name);
+    return res;
+}
+
+static int delete_item_cmd(int argc, char **argv, struct config *cfg,
+                           const char *cmd_name)
+{
+    int res = 1;
+    if (argc >= 2)
+        res = delete_item(argv[1], argv[0], cfg); 
+    else
+        command_error("Too few arguments in command \"%s\"\n", cmd_name);
+    return res;
+}
+
 int perform_command(int argc, char **argv, struct config *cfg)
 {
     int res;
@@ -286,43 +381,33 @@ int perform_command(int argc, char **argv, struct config *cfg)
         res = show_all_sections_cmd(cfg);
         break;
     case 1: 
-        if (strcmp(argv[0], HELP_CMD) == 0) {
+        if (strcmp(argv[0], HELP_CMD) == 0)
             printf(HELP);
-        } else {
+        else
             res = show_section_cmd(argv[0], cfg);
-        }
         break;
     default:
         cmd = argv[0];
         argc -= 1;
         argv += 1;
 
-        if (strcmp(cmd, ADD_CMD) == 0) {
-            if (argc >= 2) {
-                res = add_item_cmd(argv[0], argv[1], cfg);
-            } else {
-                res = add_item_cmd(argv[0], cfg->default_section, cfg);
-            }
-        } else
-        if (strcmp(cmd, MOVE_CMD) == 0) {
-            if (argc >= 3)
-                res = move_item_cmd(argv[0], argv[1], argv[2], cfg);
-            else
-                command_error("Too few arguments in command \"%s\"\n", cmd);
-        } else
-        if (strcmp(cmd, COPY_CMD) == 0) {
-            if (argc >= 3)
-                res = copy_item_cmd(argv[0], argv[1], argv[2], cfg);
-            else
-                command_error("Too few arguments in command \"%s\"\n", cmd);
-        } else
-        if (strcmp(cmd, DELETE_CMD) == 0) {
-            if (argc >= 2)
-                res = delete_item_cmd(argv[0], argv[1], cfg); 
-            else
-                command_error("Too few arguments in command \"%s\"\n", cmd);
-        } else {
+        if (strcmp(cmd, SAVE_CMD) == 0)
+            res = save_item_cmd(argc, argv, cfg);
+        else
+        if (strcmp(cmd, ADD_CMD) == 0)
+            res = add_item_cmd(argc, argv, cfg, cmd);
+        else
+        if (strcmp(cmd, MOVE_CMD) == 0)
+            res = move_item_cmd(argc, argv, cfg, cmd);
+        else
+        if (strcmp(cmd, COPY_CMD) == 0)
+            res = copy_item_cmd(argc, argv, cfg, cmd);
+        else
+        if (strcmp(cmd, DELETE_CMD) == 0)
+            res = delete_item_cmd(argc, argv, cfg, cmd);
+        else {
             command_error("Incorrect command \"%s\"\n", cmd);
+            res = 1;
         }
     }
 
