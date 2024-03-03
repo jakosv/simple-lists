@@ -8,7 +8,8 @@ void parsed_str_free(struct parsed_str *str);
 void parsed_str_clear(struct parsed_str *str);
 int parsed_str_length(struct parsed_str *str);
 void parsed_str_add_char(char ch, struct parsed_str *str);
+void parsed_str_to_c_string(struct parsed_str *str);
 void parsed_str_strip(struct parsed_str *str);
-const char *get_parsed_str_as_c_string(const struct parsed_str *str);
+const char *get_parsed_str_data(const struct parsed_str *str);
 
 #endif

@@ -93,9 +93,14 @@ int parse_param(struct file_parser *parser)
 const char *get_parsed_value(struct file_parser *parser)
 {
     const char *parsed_value;
+    int len;
 
     parsed_str_strip(parser->parsed_value);
-    parsed_value = get_parsed_str_as_c_string(parser->parsed_value);
+    parsed_str_to_c_string(parser->parsed_value);
+    parsed_value = get_parsed_str_data(parser->parsed_value);
+
+    len = strlen(parsed_value);
+    printf("[%d]: %s\n", len, parsed_value);
 
     return parsed_value;
 }
