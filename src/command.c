@@ -135,6 +135,8 @@ static void remove_section_item(struct item_dbl_node *item,
                                 struct section_dbl *sections,
                                 const struct config *cfg)
 {
+    printf("Item \"%s\" has been removed from \"%s\" section\n",
+           item->item_name, section->section_name);
     item_dbl_remove(item, section->items);
 
     if (item_dbl_is_empty(section->items) &&
