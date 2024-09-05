@@ -17,10 +17,10 @@
     "`slist [section_pos|section_name]` show section\n"\
     "`slist s [item]` save item to default section\n"\
     "`slist add [section_pos|section_name] [item]` add item to section\n"\
-    "`slist del [section_pos|section_name] [item_pos]` delete item\n"\
-    "`slist mv [section_pos|section_name] [target_section] [item_pos]` "\
+    "`slist del [section_pos|section_name] {item_positions}` delete item\n"\
+    "`slist mv [section_pos|section_name] [target_section] {item_positions}` "\
     "move item to another section\n"\
-    "`slist cp [section_pos|section_name] [target_section] [item_pos]` "\
+    "`slist cp [section_pos|section_name] [target_section] {item_positions}` "\
     "copy item\n"
 
 #define SAVE_CMD "sv"
@@ -74,12 +74,10 @@ static void show_all_sections(const struct section_dbl *sections)
 }
 
 static struct item_dbl_node*
-get_item(const char *item_name, struct section_dbl_node *section)
+get_item(const int item_pos, const struct section_dbl_node *section)
 {
     struct item_dbl_node *item;
-    int item_pos;
 
-    item_pos = str_to_pos(item_name);
     item = item_dbl_search_by_pos(item_pos, section->items);
     if (!item)
         command_error("Incorrect item position [%d]\n", item_pos);
@@ -105,7 +103,7 @@ get_section(const char *section_name, struct section_dbl *sections)
 }
 
 static int add_item(const char *item_name, const char *section_name,
-                         struct config *cfg)
+                    struct config *cfg)
 {
     struct section_dbl *sections;
     struct section_dbl_node *section;
@@ -118,7 +116,7 @@ static int add_item(const char *item_name, const char *section_name,
         section_dbl_push_back(section_name, sections);
         section = sections->last;
     }
-    
+
     item_dbl_push_back(item_name, section->items);
     put_sections(sections, cfg->default_section, cfg->data_location);
 
@@ -140,7 +138,7 @@ static void remove_section_item(struct item_dbl_node *item,
     item_dbl_remove(item, section->items);
 
     if (item_dbl_is_empty(section->items) &&
-            strcmp(section->section_name, cfg->default_section) != 0) 
+            strcmp(section->section_name, cfg->default_section) != 0)
     {
         printf("Section \"%s\" has been removed\n", section->section_name);
         section_dbl_remove(section, sections);
@@ -150,13 +148,34 @@ static void remove_section_item(struct item_dbl_node *item,
     }
 }
 
-static int move_item(const char *item_name, const char *section_name,
-                         const char *target_section_name, struct config *cfg)
+static struct item_dbl_node**
+load_section_items(const int *item_positions, int item_count,
+                   const struct section_dbl_node *section)
+{
+    struct item_dbl_node *item;
+    struct item_dbl_node **items;
+    int i;
+
+    items = malloc(item_count * sizeof(struct section_dbl_node*));
+
+    for (i = 0; i < item_count; i++) {
+        item = get_item(item_positions[i], section);
+        items[i] = item;
+    }
+
+    return items;
+}
+
+static int move_items(const int *item_positions, int item_count,
+                      const char *section_name,
+                      const char *target_section_name,
+                      struct config *cfg)
 {
     struct section_dbl *sections;
     struct section_dbl_node *section;
-    struct item_dbl_node *item;
     struct section_dbl_node *target_section;
+    struct item_dbl_node **items;
+    int i;
 
     sections = load_sections(cfg->data_location, cfg->default_section);
     if (!sections)
@@ -165,33 +184,39 @@ static int move_item(const char *item_name, const char *section_name,
     if (!section)
         command_error("Section \"%s\" not found\n", section_name);
 
-    item = get_item(item_name, section);
-
     target_section = get_section(target_section_name, sections);
     if (!target_section) {
         section_dbl_push_back(target_section_name, sections);
         target_section = sections->last;
     }
 
-    item_dbl_push_back(item->item_name, target_section->items);
+    items = load_section_items(item_positions, item_count, section);
 
-    remove_section_item(item, section, sections, cfg);
+    for (i = 0; i < item_count; i++) {
+        item_dbl_push_back(items[i]->item_name, target_section->items);
+        remove_section_item(items[i], section, sections, cfg);
+    }
 
     show_section(target_section);
 
     put_sections(sections, cfg->default_section, cfg->data_location);
+
     section_dbl_free(sections);
+    free(items);
     free(sections);
     return 0;
 }
 
-static int copy_item(const char *item_name, const char *section_name,
-                         const char *target_section_name, struct config *cfg)
+static int copy_items(const int *item_positions, int item_count,
+                      const char *section_name,
+                      const char *target_section_name,
+                      struct config *cfg)
 {
     struct section_dbl *sections;
     struct section_dbl_node *section;
-    struct item_dbl_node *item;
     struct section_dbl_node *target_section;
+    struct item_dbl_node **items;
+    int i;
 
     sections = load_sections(cfg->data_location, cfg->default_section);
     if (!sections)
@@ -200,31 +225,35 @@ static int copy_item(const char *item_name, const char *section_name,
     if (!section)
         command_error("Section \"%s\" not found\n", section_name);
 
-    item = get_item(item_name, section);
-
     target_section = get_section(target_section_name, sections);
     if (!target_section) {
         section_dbl_push_back(target_section_name, sections);
         target_section = sections->last;
     }
 
-    item_dbl_push_back(item->item_name, target_section->items);
+    items = load_section_items(item_positions, item_count, section);
+
+    for (i = 0; i < item_count; i++)
+        item_dbl_push_back(items[i]->item_name, target_section->items);
 
     show_section(section);
     show_section(target_section);
 
     put_sections(sections, cfg->default_section, cfg->data_location);
+
     section_dbl_free(sections);
+    free(items);
     free(sections);
     return 0;
 }
 
-static int delete_item(const char *item_name, const char *section_name, 
-                           struct config *cfg)
+static int delete_items(const int *item_positions, int item_count,
+                        const char *section_name, struct config *cfg)
 {
     struct section_dbl *sections;
     struct section_dbl_node *section;
-    struct item_dbl_node *item;
+    struct item_dbl_node **items;
+    int i;
 
     sections = load_sections(cfg->data_location, cfg->default_section);
     if (!sections)
@@ -234,12 +263,14 @@ static int delete_item(const char *item_name, const char *section_name,
     if (!section)
         command_error("Section \"%s\" not found\n", section_name);
 
-    item = get_item(item_name, section);
+    items = load_section_items(item_positions, item_count, section);
 
-    remove_section_item(item, section, sections, cfg);
+    for (i = 0; i < item_count; i++)
+        remove_section_item(items[i], section, sections, cfg);
 
     put_sections(sections, cfg->default_section, cfg->data_location);
     section_dbl_free(sections);
+    free(items);
     free(sections);
 
     return 0;
@@ -281,7 +312,7 @@ static char *concat_arguments(int start, int end, int argc, char **argv)
 {
     char *res;
     int i, res_len;
-    
+
     if (end >= argc)
         end = argc-1;
 
@@ -306,6 +337,19 @@ static char *concat_arguments(int start, int end, int argc, char **argv)
     res[res_len] = '\0';
 
     return res;
+}
+
+static int *parse_argv_number_array(char **argv, int argc,
+                                    int start, int count)
+{
+    int *numbers;
+    int i;
+
+    numbers = malloc(sizeof(int) * count);
+    for (i = 0; i < count; i++)
+        numbers[i] = str_to_pos(argv[start + i]);
+
+    return numbers;
 }
 
 static int save_item_cmd(int argc, char **argv, struct config *cfg)
@@ -343,10 +387,21 @@ static int move_item_cmd(int argc, char **argv, struct config *cfg,
                          const char *cmd_name)
 {
     int res = 1;
-    if (argc >= 3)
-        res = move_item(argv[2], argv[0], argv[1], cfg);
-    else
+    if (argc >= 3) {
+        int *item_positions;
+        int item_count, first_item_arg, last_item_arg;
+
+        first_item_arg = 2;
+        last_item_arg = argc - 1;
+        item_count = last_item_arg - first_item_arg + 1;
+        item_positions = parse_argv_number_array(argv, argc, first_item_arg,
+                                                 item_count);
+
+        res = move_items(item_positions, item_count, argv[0], argv[1], cfg);
+        free(item_positions);
+    } else {
         command_error("Too few arguments in command \"%s\"\n", cmd_name);
+    }
     return res;
 }
 
@@ -354,10 +409,20 @@ static int copy_item_cmd(int argc, char **argv, struct config *cfg,
                          const char *cmd_name)
 {
     int res = 1;
-    if (argc >= 3)
-        res = copy_item(argv[2], argv[0], argv[1], cfg);
-    else
+    if (argc >= 3) {
+        int *item_positions;
+        int item_count, first_item_arg, last_item_arg;
+
+        first_item_arg = 2;
+        last_item_arg = argc - 1;
+        item_count = last_item_arg - first_item_arg + 1;
+        item_positions = parse_argv_number_array(argv, argc, first_item_arg,
+                                                 item_count);
+        res = copy_items(item_positions, item_count, argv[0], argv[1], cfg);
+        free(item_positions);
+    } else {
         command_error("Too few arguments in command \"%s\"\n", cmd_name);
+    }
     return res;
 }
 
@@ -365,10 +430,21 @@ static int delete_item_cmd(int argc, char **argv, struct config *cfg,
                            const char *cmd_name)
 {
     int res = 1;
-    if (argc >= 2)
-        res = delete_item(argv[1], argv[0], cfg); 
-    else
+    if (argc >= 2) {
+        int *item_positions;
+        int item_count, first_item_arg, last_item_arg;
+
+        first_item_arg = 1;
+        last_item_arg = argc - 1;
+        item_count = last_item_arg - first_item_arg + 1;
+        item_positions = parse_argv_number_array(argv, argc, first_item_arg,
+                                                 item_count);
+
+        res = delete_items(item_positions, item_count, argv[0], cfg);
+        free(item_positions);
+    } else {
         command_error("Too few arguments in command \"%s\"\n", cmd_name);
+    }
     return res;
 }
 
@@ -382,7 +458,7 @@ int perform_command(int argc, char **argv, struct config *cfg)
     case 0:
         res = show_all_sections_cmd(cfg);
         break;
-    case 1: 
+    case 1:
         if (strcmp(argv[0], HELP_CMD) == 0)
             printf(HELP);
         else

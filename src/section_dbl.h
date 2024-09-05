@@ -20,7 +20,7 @@ void section_dbl_free(struct section_dbl *lst);
 void section_dbl_push_front(const char *section_name, 
                             struct section_dbl *lst);
 void section_dbl_push_back(const char *section_name, struct section_dbl *lst);
-void section_dbl_remove(struct section_dbl_node *node, 
+void section_dbl_remove(struct section_dbl_node *node,
                         struct section_dbl *lst);
 struct section_dbl_node*
 section_dbl_search(const char *section_name, struct section_dbl *lst);

@@ -16,6 +16,10 @@ struct item_dbl {
 
 void item_dbl_init(struct item_dbl *lst);
 void item_dbl_free(struct item_dbl *lst);
+void item_dbl_add_first_node(struct item_dbl_node *node,
+                             struct item_dbl *lst);
+void item_dbl_add_last_node(struct item_dbl_node *node,
+                            struct item_dbl *lst);
 void item_dbl_push_front(const char *item_name, struct item_dbl *lst);
 void item_dbl_push_back(const char *item_name, struct item_dbl *lst);
 void item_dbl_remove(struct item_dbl_node *node, struct item_dbl *lst);

@@ -41,6 +41,32 @@ static void item_dbl_node_init(struct item_dbl_node *node,
     node->prev = NULL;
 }
 
+void item_dbl_add_first_node(struct item_dbl_node *node,
+                             struct item_dbl *lst)
+{
+    node->prev = NULL;
+    node->next = lst->first;
+
+    if (lst->last)
+        lst->first->prev = node;
+    else
+        lst->last = node;
+    lst->first = node;
+}
+
+void item_dbl_add_last_node(struct item_dbl_node *node,
+                            struct item_dbl *lst)
+{
+    node->next = NULL;
+    node->prev = lst->last;
+
+    if (lst->first)
+        lst->last->next = node;
+    else
+        lst->first = node;
+    lst->last = node;
+}
+
 void item_dbl_push_front(const char *item_name, struct item_dbl *lst)
 {
     struct item_dbl_node *tmp;
@@ -48,12 +74,7 @@ void item_dbl_push_front(const char *item_name, struct item_dbl *lst)
     tmp = malloc(sizeof(*tmp));
     item_dbl_node_init(tmp, item_name);
 
-    tmp->next = lst->first;
-    if (lst->last)
-        lst->first->prev = tmp;
-    else
-        lst->last = tmp;
-    lst->first = tmp;
+    item_dbl_add_first_node(tmp, lst);
 }
 
 void item_dbl_push_back(const char *item_name, struct item_dbl *lst)
@@ -63,12 +84,7 @@ void item_dbl_push_back(const char *item_name, struct item_dbl *lst)
     tmp = malloc(sizeof(*tmp));
     item_dbl_node_init(tmp, item_name);
 
-    tmp->prev = lst->last;
-    if (lst->first)
-        lst->last->next = tmp;
-    else
-        lst->first = tmp;
-    lst->last = tmp;
+    item_dbl_add_last_node(tmp, lst);
 }
 
 void item_dbl_remove(struct item_dbl_node *node, struct item_dbl *lst)
