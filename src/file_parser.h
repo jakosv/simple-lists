@@ -1,7 +1,7 @@
 #ifndef PARSER_H_SENTRY
 #define PARSER_H_SENTRY
 
-#include "parsed_str.h"
+#include "string.h"
 
 #include <stdio.h>
 
@@ -11,7 +11,7 @@ enum parser_error { pe_ok, pe_eof };
 
 struct file_parser {
     FILE *file;
-    struct parsed_str *parsed_value;
+    struct string *parsed_value;
     enum param_type parsed_type; 
 };
 

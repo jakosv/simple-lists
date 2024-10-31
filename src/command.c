@@ -12,23 +12,35 @@
 #include <ctype.h>
 #include <stdarg.h>
 
-#define HELP "`slist [-f file] <command> <item> <section>`\n"\
-    "`slist` show all sections\n"\
-    "`slist [section_pos|section_name]` show section\n"\
-    "`slist s [item]` save item to default section\n"\
-    "`slist add [section_pos|section_name] [item]` add item to section\n"\
-    "`slist del [section_pos|section_name] {item_positions}` delete item\n"\
-    "`slist mv [section_pos|section_name] [target_section] {item_positions}` "\
-    "move item to another section\n"\
-    "`slist cp [section_pos|section_name] [target_section] {item_positions}` "\
-    "copy item\n"
 
-#define SAVE_CMD "sv"
-#define ADD_CMD "add"
-#define MOVE_CMD "mv"
-#define COPY_CMD "cp"
-#define DELETE_CMD "del"
-#define HELP_CMD "help"
+/*======= COMMANDS ========*/
+#define PROG "slist"
+#define ADD_ITEM_CMD "a"
+#define PUT_ITEM_CMD "p"
+#define CREATE_SECTION_CMD "s"
+#define MOVE_CMD "m"
+#define COPY_CMD "c"
+#define DELETE_CMD "d"
+#define HELP_CMD "h"
+
+#define CMD_FORMAT PROG" [-f file] <command> <item> <section>\n"
+const char *help = "`slist` show all sections\n"
+    "`slist [section]` show section\n"
+    "`slist a [item]` add item to default section\n"
+    "`slist s [section]` create section\n"
+    "`slist d [section]` delete section\n"
+    "`slist p [section] [item]` put item to section\n"
+    "`slist d [section] [item]` delete item\n"
+    "`slist m [source_section] [target_section] [item]` move item\n"
+    "`slist c [source_section] [target_section] [item]` copy item\n";
+
+#define ADD_ITEM_CMD "a"
+#define PUT_ITEM_CMD "p"
+#define CREATE_SECTION_CMD "s"
+#define MOVE_CMD "m"
+#define COPY_CMD "c"
+#define DELETE_CMD "d"
+#define HELP_CMD "h"
 
 static void command_error(const char *err_fmt, ...)
 {
@@ -112,16 +124,38 @@ static int add_item(const char *item_name, const char *section_name,
         return 1;
 
     section = get_section(section_name, sections);
-    if (!section) {
-        section_dbl_push_back(section_name, sections);
-        section = sections->last;
-    }
+    if (!section)
+        command_error("Section \"%s\" not found\n", section_name);
 
     item_dbl_push_back(item_name, section->items);
     put_sections(sections, cfg->default_section, cfg->data_location);
 
     show_section(section);
 
+    section_dbl_free(sections);
+    free(sections);
+
+    return 0;
+}
+
+static int add_section(const char *section_name, struct config *cfg)
+{
+    struct section_dbl *sections;
+    struct section_dbl_node *section;
+    sections = load_sections(cfg->data_location, cfg->default_section);
+    if (!sections)
+        return 1;
+
+    section = get_section(section_name, sections);
+    if (section)
+        command_error("Section \"%s\" already exists\n", section_name);
+
+    section_dbl_push_back(section_name, sections);
+    section = get_section(section_name, sections);
+
+    show_section(section);
+
+    put_sections(sections, cfg->default_section, cfg->data_location);
     section_dbl_free(sections);
     free(sections);
 
@@ -137,15 +171,7 @@ static void remove_section_item(struct item_dbl_node *item,
            item->item_name, section->section_name);
     item_dbl_remove(item, section->items);
 
-    if (item_dbl_is_empty(section->items) &&
-            strcmp(section->section_name, cfg->default_section) != 0)
-    {
-        printf("Section \"%s\" has been removed\n", section->section_name);
-        section_dbl_remove(section, sections);
-        show_all_sections(sections);
-    } else {
-        show_section(section);
-    }
+    show_section(section);
 }
 
 static struct item_dbl_node**
@@ -276,6 +302,36 @@ static int delete_items(const int *item_positions, int item_count,
     return 0;
 }
 
+static int delete_section(const char *section_name, struct config *cfg)
+{
+    struct section_dbl *sections;
+    struct section_dbl_node *section;
+
+    sections = load_sections(cfg->data_location, cfg->default_section);
+    if (!sections)
+        return 1;
+
+    section = get_section(section_name, sections);
+    if (!section)
+        command_error("Section \"%s\" not found\n", section_name);
+
+    if (!item_dbl_is_empty(section->items) ||
+        strcmp(section->section_name, cfg->default_section) == 0)
+    {
+        command_error("Section \"%s\" is not empty\n", section->section_name);
+    }
+
+    printf("Section \"%s\" has been removed\n", section->section_name);
+    section_dbl_remove(section, sections);
+    show_all_sections(sections);
+
+    put_sections(sections, cfg->default_section, cfg->data_location);
+    section_dbl_free(sections);
+    free(sections);
+
+    return 0;
+}
+
 static int show_section_cmd(const char *section_name, struct config *cfg)
 {
     struct section_dbl *sections;
@@ -352,7 +408,7 @@ static int *parse_argv_number_array(char **argv, int argc,
     return numbers;
 }
 
-static int save_item_cmd(int argc, char **argv, struct config *cfg)
+static int add_item_cmd(int argc, char **argv, struct config *cfg)
 {
     int res;
     char *item_name;
@@ -364,7 +420,7 @@ static int save_item_cmd(int argc, char **argv, struct config *cfg)
     return res;
 }
 
-static int add_item_cmd(int argc, char **argv, struct config *cfg,
+static int put_item_cmd(int argc, char **argv, struct config *cfg,
                          const char *cmd_name)
 {
     int res = 1;
@@ -376,6 +432,23 @@ static int add_item_cmd(int argc, char **argv, struct config *cfg,
         section_name = argv[0];
         res = add_item(item_name, section_name, cfg);
         free(item_name);
+    } else {
+        command_error("Too few arguments in command \"%s\"\n", cmd_name);
+    }
+
+    return res;
+}
+
+static int create_section_cmd(int argc, char **argv, struct config *cfg,
+                              const char *cmd_name)
+{
+    int res = 1;
+
+    if (argc >= 1) {
+        char *section_name;
+        section_name = concat_arguments(0, argc-1, argc, argv);
+        res = add_section(section_name, cfg);
+        free(section_name);
     } else {
         command_error("Too few arguments in command \"%s\"\n", cmd_name);
     }
@@ -426,11 +499,13 @@ static int copy_item_cmd(int argc, char **argv, struct config *cfg,
     return res;
 }
 
-static int delete_item_cmd(int argc, char **argv, struct config *cfg,
+static int delete_cmd(int argc, char **argv, struct config *cfg,
                            const char *cmd_name)
 {
     int res = 1;
-    if (argc >= 2) {
+    if (argc == 1) {
+        res = delete_section(argv[0], cfg);
+    } else if (argc >= 2) {
         int *item_positions;
         int item_count, first_item_arg, last_item_arg;
 
@@ -459,21 +534,26 @@ int perform_command(int argc, char **argv, struct config *cfg)
         res = show_all_sections_cmd(cfg);
         break;
     case 1:
-        if (strcmp(argv[0], HELP_CMD) == 0)
-            printf(HELP);
-        else
+        if (strcmp(argv[0], HELP_CMD) == 0) {
+            puts(CMD_FORMAT);
+            puts(help);
+        } else {
             res = show_section_cmd(argv[0], cfg);
+        }
         break;
     default:
         cmd = argv[0];
         argc -= 1;
         argv += 1;
 
-        if (strcmp(cmd, SAVE_CMD) == 0)
-            res = save_item_cmd(argc, argv, cfg);
+        if (strcmp(cmd, ADD_ITEM_CMD) == 0)
+            res = add_item_cmd(argc, argv, cfg);
         else
-        if (strcmp(cmd, ADD_CMD) == 0)
-            res = add_item_cmd(argc, argv, cfg, cmd);
+        if (strcmp(cmd, PUT_ITEM_CMD) == 0)
+            res = put_item_cmd(argc, argv, cfg, cmd);
+        else
+        if (strcmp(cmd, CREATE_SECTION_CMD) == 0)
+            res = create_section_cmd(argc, argv, cfg, cmd);
         else
         if (strcmp(cmd, MOVE_CMD) == 0)
             res = move_item_cmd(argc, argv, cfg, cmd);
@@ -482,7 +562,7 @@ int perform_command(int argc, char **argv, struct config *cfg)
             res = copy_item_cmd(argc, argv, cfg, cmd);
         else
         if (strcmp(cmd, DELETE_CMD) == 0)
-            res = delete_item_cmd(argc, argv, cfg, cmd);
+            res = delete_cmd(argc, argv, cfg, cmd);
         else {
             command_error("Incorrect command \"%s\"\n", cmd);
             res = 1;

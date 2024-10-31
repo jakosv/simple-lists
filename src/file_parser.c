@@ -1,6 +1,6 @@
 #include "file_parser.h"
 #include "util.h"
-#include "parsed_str.h"
+#include "string.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -20,7 +20,7 @@ struct file_parser *parser_open(const char *filename)
     parser->file = fopen(filename, "r");
     if (!parser->file)
         parser->file = fopen(filename, "w");
-    parser->parsed_value = parsed_str_init();
+    parser->parsed_value = string_init();
     parser->parsed_type = pt_none; 
 
     return parser;
@@ -29,7 +29,7 @@ struct file_parser *parser_open(const char *filename)
 void parser_free(struct file_parser *parser)
 {
     fclose(parser->file);
-    parsed_str_free(parser->parsed_value);
+    string_free(parser->parsed_value);
     parser->parsed_value = NULL;
     free(parser);
 }
@@ -40,7 +40,7 @@ static int parse_section(struct file_parser *parser)
     while ((ch = fgetc(parser->file)) != EOF) {
         if (ch == close_section_char)
             return 0;
-        parsed_str_add_char(ch, parser->parsed_value); 
+        string_add_char(ch, parser->parsed_value); 
     }
     
     return pe_eof;
@@ -59,7 +59,7 @@ static int parse_item(struct file_parser *parser)
             was_backslash = 1;
             continue;
         }
-        parsed_str_add_char(ch, parser->parsed_value); 
+        string_add_char(ch, parser->parsed_value); 
     }
 
     return pe_eof;
@@ -69,7 +69,7 @@ int parse_param(struct file_parser *parser)
 {
     int ch;
 
-    parsed_str_clear(parser->parsed_value);
+    string_clear(parser->parsed_value);
 
     while ((ch = fgetc(parser->file)) != EOF) {
         if (ch == open_section_char) {
@@ -94,9 +94,9 @@ const char *get_parsed_value(struct file_parser *parser)
 {
     const char *parsed_value;
 
-    parsed_str_strip(parser->parsed_value);
-    parsed_str_to_c_string(parser->parsed_value);
-    parsed_value = get_parsed_str_data(parser->parsed_value);
+    string_strip(parser->parsed_value);
+    string_to_c_string(parser->parsed_value);
+    parsed_value = get_string_data(parser->parsed_value);
 
     return parsed_value;
 }
