@@ -148,7 +148,8 @@ static int add_section(const char *section_name, struct config *cfg)
 
     section = get_section(section_name, sections);
     if (section)
-        command_error("Section \"%s\" already exists\n", section_name);
+        command_error("Section \"%s\" already exists\n",
+                      section->section_name);
 
     section_dbl_push_back(section_name, sections);
     section = get_section(section_name, sections);
