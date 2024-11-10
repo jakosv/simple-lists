@@ -171,8 +171,6 @@ static void remove_section_item(struct item_dbl_node *item,
     printf("Item \"%s\" has been removed from \"%s\" section\n",
            item->item_name, section->section_name);
     item_dbl_remove(item, section->items);
-
-    show_section(section);
 }
 
 static struct item_dbl_node**
@@ -294,6 +292,8 @@ static int delete_items(const int *item_positions, int item_count,
 
     for (i = 0; i < item_count; i++)
         remove_section_item(items[i], section, sections, cfg);
+
+    show_section(section);
 
     put_sections(sections, cfg->default_section, cfg->data_location);
     section_dbl_free(sections);

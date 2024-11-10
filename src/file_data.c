@@ -52,7 +52,7 @@ struct section_dbl *load_sections(const char *filename,
     section_dbl_push_back(default_section, sections);
     section_node = sections->last;
 
-    while ((res = parse_param(parser)) != pe_eof) {
+    while ((res = parse_param(parser)) == pe_ok) {
         const char *parsed_value;
 
         parsed_value = get_parsed_value(parser);
