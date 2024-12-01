@@ -35,19 +35,20 @@ void put_sections(struct section_dbl *sections, const char *default_section,
 }
 
 struct section_dbl *load_sections(const char *filename, 
-                                  const char *default_section)
+                                  const char *default_section,
+                                  const char *access)
 {
     struct file_parser *parser;
     struct section_dbl_node *section_node;
     struct section_dbl *sections;
     int res;
 
+    parser = parser_open(filename, access);
+    if (!parser)
+        return NULL;
+
     sections = malloc(sizeof(*sections));
     section_dbl_init(sections);
-
-    parser = parser_open(filename);
-    if (!parser)
-        return sections;
 
     section_dbl_push_back(default_section, sections);
     section_node = sections->last;

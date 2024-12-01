@@ -6,23 +6,27 @@
 #include <string.h>
 #include <stdlib.h>
 
-enum { 
-    open_section_char = '[', 
-    close_section_char = ']', 
+enum {
+    open_section_char = '[',
+    close_section_char = ']',
     open_item_char = '-',
     end_line_item_char = '\n',
     multiline_start_char = ' '
 };
 
-struct file_parser *parser_open(const char *filename)
+struct file_parser *parser_open(const char *filename, const char *mode)
 {
     struct file_parser *parser;
     parser = malloc(sizeof(*parser));
-    parser->file = fopen(filename, "r");
-    if (!parser->file)
-        parser->file = fopen(filename, "w");
+
+    parser->file = fopen(filename, mode);
+    if (!parser->file) {
+        perror(filename);
+        return NULL;
+    }
+
     parser->parsed_value = string_init();
-    parser->parsed_type = pt_none; 
+    parser->parsed_type = pt_none;
     parser->last_parsed_char = EOF;
 
     return parser;
@@ -38,29 +42,34 @@ void parser_free(struct file_parser *parser)
 
 static int parse_line(struct file_parser *parser, char line_end_char)
 {
-    int ch; 
+    int ch;
     while ((ch = fgetc(parser->file)) != EOF) {
         if (ch == line_end_char)
             return pe_ok;
-        string_add_char(ch, parser->parsed_value); 
+        string_add_char(ch, parser->parsed_value);
     }
-    
+
     return pe_eof;
 }
 
 static int parse_item(struct file_parser *parser)
 {
     int ch;
+    char is_multiline_item = 0;
 
     do {
         parse_line(parser, end_line_item_char);
         ch = fgetc(parser->file);
 
         if (ch == multiline_start_char) {
-            string_add_char(end_line_item_char, parser->parsed_value); 
-            string_add_char(multiline_start_char, parser->parsed_value); 
+            string_add_char(end_line_item_char, parser->parsed_value);
+            string_add_char(multiline_start_char, parser->parsed_value);
+            is_multiline_item = 1;
         }
     } while (ch == multiline_start_char);
+
+    if (is_multiline_item)
+      string_add_char(end_line_item_char, parser->parsed_value);
 
     parser->last_parsed_char = ch;
     if (parser->last_parsed_char == EOF)
@@ -84,9 +93,9 @@ int parse_param(struct file_parser *parser)
                 return res;
             parser->parsed_type = pt_section;
             return pe_ok;
-        } else 
+        } else
         if (ch == open_item_char) {
-            int res = parse_item(parser); 
+            int res = parse_item(parser);
             if (res == pe_err)
                 return res;
             parser->parsed_type = pt_task;

@@ -42,6 +42,8 @@ const char *help = "`slist` show all sections\n"
 #define DELETE_CMD "d"
 #define HELP_CMD "h"
 
+enum command_error { cmd_ok, cmd_err };
+
 static void command_error(const char *err_fmt, ...)
 {
     va_list vl;
@@ -49,7 +51,7 @@ static void command_error(const char *err_fmt, ...)
     vfprintf(stderr, err_fmt, vl);
     va_end(vl);
 
-    exit(1);
+    exit(cmd_err);
 }
 
 static int str_to_pos(const char *str_pos)
@@ -119,9 +121,11 @@ static int add_item(const char *item_name, const char *section_name,
 {
     struct section_dbl *sections;
     struct section_dbl_node *section;
-    sections = load_sections(cfg->data_location, cfg->default_section);
+
+    sections = load_sections(cfg->data_location, cfg->default_section,
+                             DATA_WONLY);
     if (!sections)
-        return 1;
+        return cmd_err;
 
     section = get_section(section_name, sections);
     if (!section)
@@ -135,16 +139,18 @@ static int add_item(const char *item_name, const char *section_name,
     section_dbl_free(sections);
     free(sections);
 
-    return 0;
+    return cmd_ok;
 }
 
 static int add_section(const char *section_name, struct config *cfg)
 {
     struct section_dbl *sections;
     struct section_dbl_node *section;
-    sections = load_sections(cfg->data_location, cfg->default_section);
+
+    sections = load_sections(cfg->data_location, cfg->default_section,
+                             DATA_WONLY);
     if (!sections)
-        return 1;
+        return cmd_err;
 
     section = get_section(section_name, sections);
     if (section)
@@ -160,7 +166,7 @@ static int add_section(const char *section_name, struct config *cfg)
     section_dbl_free(sections);
     free(sections);
 
-    return 0;
+    return cmd_ok;
 }
 
 static void remove_section_item(struct item_dbl_node *item,
@@ -202,9 +208,11 @@ static int move_items(const int *item_positions, int item_count,
     struct item_dbl_node **items;
     int i;
 
-    sections = load_sections(cfg->data_location, cfg->default_section);
+    sections = load_sections(cfg->data_location, cfg->default_section,
+                             DATA_WONLY);
     if (!sections)
-        return 1;
+        return cmd_err;
+
     section = get_section(section_name, sections);
     if (!section)
         command_error("Section \"%s\" not found\n", section_name);
@@ -229,7 +237,7 @@ static int move_items(const int *item_positions, int item_count,
     section_dbl_free(sections);
     free(items);
     free(sections);
-    return 0;
+    return cmd_ok;
 }
 
 static int copy_items(const int *item_positions, int item_count,
@@ -243,9 +251,12 @@ static int copy_items(const int *item_positions, int item_count,
     struct item_dbl_node **items;
     int i;
 
-    sections = load_sections(cfg->data_location, cfg->default_section);
+    sections = load_sections(cfg->data_location, cfg->default_section,
+                             DATA_WONLY);
     if (!sections)
-        return 1;
+        command_error("Error loading sections from file \"%s\"\n",
+                      cfg->data_location);
+
     section = get_section(section_name, sections);
     if (!section)
         command_error("Section \"%s\" not found\n", section_name);
@@ -269,7 +280,7 @@ static int copy_items(const int *item_positions, int item_count,
     section_dbl_free(sections);
     free(items);
     free(sections);
-    return 0;
+    return cmd_ok;
 }
 
 static int delete_items(const int *item_positions, int item_count,
@@ -280,9 +291,10 @@ static int delete_items(const int *item_positions, int item_count,
     struct item_dbl_node **items;
     int i;
 
-    sections = load_sections(cfg->data_location, cfg->default_section);
+    sections = load_sections(cfg->data_location, cfg->default_section,
+                             DATA_WONLY);
     if (!sections)
-        return 1;
+        return cmd_err;
 
     section = get_section(section_name, sections);
     if (!section)
@@ -300,7 +312,7 @@ static int delete_items(const int *item_positions, int item_count,
     free(items);
     free(sections);
 
-    return 0;
+    return cmd_ok;
 }
 
 static int delete_section(const char *section_name, struct config *cfg)
@@ -308,9 +320,10 @@ static int delete_section(const char *section_name, struct config *cfg)
     struct section_dbl *sections;
     struct section_dbl_node *section;
 
-    sections = load_sections(cfg->data_location, cfg->default_section);
+    sections = load_sections(cfg->data_location, cfg->default_section,
+                             DATA_WONLY);
     if (!sections)
-        return 1;
+        return cmd_err;
 
     section = get_section(section_name, sections);
     if (!section)
@@ -330,7 +343,7 @@ static int delete_section(const char *section_name, struct config *cfg)
     section_dbl_free(sections);
     free(sections);
 
-    return 0;
+    return cmd_ok;
 }
 
 static int show_section_cmd(const char *section_name, struct config *cfg)
@@ -338,9 +351,11 @@ static int show_section_cmd(const char *section_name, struct config *cfg)
     struct section_dbl *sections;
     struct section_dbl_node *section;
 
-    sections = load_sections(cfg->data_location, cfg->default_section);
+    sections = load_sections(cfg->data_location, cfg->default_section,
+                             DATA_RONLY);
     if (!sections)
-        return 1;
+        command_error("Error loading sections from file \"%s\"\n",
+                      cfg->data_location);
 
     section = get_section(section_name, sections);
     if (!section)
@@ -349,20 +364,25 @@ static int show_section_cmd(const char *section_name, struct config *cfg)
     show_section(section);
     section_dbl_free(sections);
     free(sections);
-    return 0;
+
+    return cmd_ok;
 }
 
 static int show_all_sections_cmd(struct config *cfg)
 {
     struct section_dbl *sections;
 
-    sections = load_sections(cfg->data_location, cfg->default_section);
+    sections = load_sections(cfg->data_location, cfg->default_section,
+                             DATA_RONLY);
     if (!sections)
-        return 1;
+        command_error("Error loading sections from file \"%s\"\n",
+                      cfg->data_location);
+
     show_all_sections(sections);
     section_dbl_free(sections);
     free(sections);
-    return 0;
+
+    return cmd_ok;
 }
 
 static char *concat_arguments(int start, int end, int argc, char **argv)

@@ -16,7 +16,7 @@ struct file_parser {
     int last_parsed_char;
 };
 
-struct file_parser *parser_open(const char *filename);
+struct file_parser *parser_open(const char *filename, const char *mode);
 void parser_free(struct file_parser *parser);
 int parse_param(struct file_parser *parser);
 const char *get_parsed_value(struct file_parser *parser);
