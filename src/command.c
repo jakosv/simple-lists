@@ -123,7 +123,7 @@ static int add_item(const char *item_name, const char *section_name,
     struct section_dbl_node *section;
 
     sections = load_sections(cfg->data_location, cfg->default_section,
-                             DATA_WONLY);
+                             DATA_RW);
     if (!sections)
         return cmd_err;
 
@@ -148,7 +148,7 @@ static int add_section(const char *section_name, struct config *cfg)
     struct section_dbl_node *section;
 
     sections = load_sections(cfg->data_location, cfg->default_section,
-                             DATA_WONLY);
+                             DATA_RW);
     if (!sections)
         return cmd_err;
 
@@ -209,7 +209,7 @@ static int move_items(const int *item_positions, int item_count,
     int i;
 
     sections = load_sections(cfg->data_location, cfg->default_section,
-                             DATA_WONLY);
+                             DATA_RW);
     if (!sections)
         return cmd_err;
 
@@ -252,7 +252,7 @@ static int copy_items(const int *item_positions, int item_count,
     int i;
 
     sections = load_sections(cfg->data_location, cfg->default_section,
-                             DATA_WONLY);
+                             DATA_RW);
     if (!sections)
         command_error("Error loading sections from file \"%s\"\n",
                       cfg->data_location);
@@ -292,7 +292,7 @@ static int delete_items(const int *item_positions, int item_count,
     int i;
 
     sections = load_sections(cfg->data_location, cfg->default_section,
-                             DATA_WONLY);
+                             DATA_RW);
     if (!sections)
         return cmd_err;
 
@@ -321,7 +321,7 @@ static int delete_section(const char *section_name, struct config *cfg)
     struct section_dbl_node *section;
 
     sections = load_sections(cfg->data_location, cfg->default_section,
-                             DATA_WONLY);
+                             DATA_RW);
     if (!sections)
         return cmd_err;
 

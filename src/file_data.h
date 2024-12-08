@@ -4,8 +4,8 @@
 
 #include <stdio.h>
 
-#define DATA_WONLY "w"
 #define DATA_RONLY "r"
+#define DATA_RW "rw"
 
 extern const char *unnamed_section_name;
 
